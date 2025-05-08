@@ -17,7 +17,6 @@ int main() {
     std::vector<std::vector<double>> T;
     int input_size;
     int output_size = 6;
-    int n_classes;
     const int n_hidden = 6;
     double learning_rate = 0.1;
     int n_epoch = 200;

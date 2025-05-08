@@ -11,10 +11,6 @@ FFNN::FFNN(int input_size, int hidden_size, int output_size)
     init_weights();
 }
 
-int FFNN::get_size_include_bias(const int size) {
-    return size + 1; // include bias
-}
-
 std::vector<double> FFNN::forward(std::vector<double> x) {
     int I_input_size_bias = get_size_include_bias(I_input_size); //consider bias input size of 1
     int J_hidden_size_bias = get_size_include_bias(J_hidden_size); //consider bias hidden size of 1
@@ -207,21 +203,17 @@ void FFNN::init_weights() {
     std::vector<std::vector<double>> weight_w;
     std::vector<std::vector<double>> weight_v;
 
-    for (int j = 0; j < J_hidden_size; j++)
-    {
+    for (int j = 0; j < J_hidden_size; j++) {
         std::vector<double> row;
-        for (int i = 0; i < I_input_size + 1; i++)
-        {
+        for (int i = 0; i < I_input_size + 1; i++) {
             row.push_back(dist(gen));
         }
         weight_w.push_back(row);
     }
     W = weight_w;
-    for (int k = 0; k < K_output_size; k++)
-    {
+    for (int k = 0; k < K_output_size; k++) {
         std::vector<double> row;
-        for (int j = 0; j < J_hidden_size + 1; j++)
-        {
+        for (int j = 0; j < J_hidden_size + 1; j++) {
             row.push_back(dist(gen));
         }
         weight_v.push_back(row);
