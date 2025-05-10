@@ -8,5 +8,7 @@
 This project was created to practice and apply the learning principles of basic AI.
 The English explanation was translated by machine translation.
 
+![1_hidden_layer_ffnn](https://github.com/user-attachments/assets/3d81be22-37e0-428b-9d8e-aa9910529d23)
+
 ### CONFIG
 - WSL2 Ubuntu 22.04.5 LTS jammy
