@@ -7,18 +7,12 @@
 #include <random>
 
 FFNN::FFNN(int input_size, int hidden_size, int output_size)
-    : I_input_size(input_size), J_hidden_size(hidden_size), K_output_size(output_size) {
+    : I_input_size(input_size), J_hidden_size(hidden_size), K_output_size(output_size),
+      I_input_size_bias(add_size_bias(input_size)), J_hidden_size_bias(add_size_bias(hidden_size)) {
     init_weights();
 }
 
 std::vector<double> FFNN::forward(std::vector<double> x) {
-    int I_input_size_bias = get_size_include_bias(I_input_size); //consider bias input size of 1
-    int J_hidden_size_bias = get_size_include_bias(J_hidden_size); //consider bias hidden size of 1
-
-    double bias = 1.0;
-
-    // input layer
-    x.push_back(bias);
 
     // hidden layer
     for (int j = 0; j < J_hidden_size; ++j) {
@@ -32,9 +26,6 @@ std::vector<double> FFNN::forward(std::vector<double> x) {
     for (int j = 0; j < J_hidden_size; ++j) {
         z_hidden[j] = sigmoid(b_hidden[j]);
     }
-
-    // add bias
-    z_hidden.push_back(bias);
 
     // output layer
     std::vector<double> a_output(K_output_size);
@@ -56,8 +47,6 @@ std::vector<double> FFNN::forward(std::vector<double> x) {
 }
 
 void FFNN::backward(std::vector<double> x, std::vector<double> y_output, const std::vector<double> t, std::vector<std::vector<double>>& dW, std::vector<std::vector<double>>& dV) {
-    const int I_input_size_bias = get_size_include_bias(I_input_size);
-    const int J_hidden_size_bias = get_size_include_bias(J_hidden_size);
 
     // output layer
     std::vector<double> C_2(K_output_size);
@@ -91,9 +80,13 @@ void FFNN::backward(std::vector<double> x, std::vector<double> y_output, const s
     }
 }
 
-void FFNN::fit(const std::vector<std::vector<double>> X, const std::vector<std::vector<double>> T, int epochs, double learning_rate) {
-    int I_input_size_bias = get_size_include_bias(I_input_size); //consider bias input size of 1
-    int J_hidden_size_bias = get_size_include_bias(J_hidden_size); //consider bias hidden size of 1
+void FFNN::fit(std::vector<std::vector<double>>& X, const std::vector<std::vector<double>>& T, int epochs, double learning_rate) {
+    // add bias
+    const double bias = 1.0;
+    for (int n = 0; n < X.size(); ++n) {
+        X[n].push_back(bias);
+    }
+    z_hidden.push_back(bias);
 
     for (int epoch = 0; epoch < epochs; ++epoch) {
         double loss = 0.0;
@@ -103,13 +96,17 @@ void FFNN::fit(const std::vector<std::vector<double>> X, const std::vector<std::
         std::vector<std::vector<double>> dW(J_hidden_size_bias, std::vector<double>(I_input_size_bias));
         std::vector<std::vector<double>> dV(K_output_size, std::vector<double>(J_hidden_size_bias));
 
-        // loop over each training example
+
+
+        // loop over each training sample
         for (int n = 0; n < X.size(); ++n) {
             // Forward pass
             std::vector<double> y = forward(X[n]);
             std::vector<double> t = T[n];
             loss += cross_entropy(y, t);
-            accuracy += (y == t) ? 1.0 : 0.0;
+            int y_pred = std::max_element(y.begin(), y.end()) - y.begin();
+            int t_true = std::max_element(t.begin(), t.end()) - t.begin();
+            accuracy += (y_pred == t_true) ? 1.0 : 0.0;
 
             // Backward pass
             backward(X[n], y, t, dW, dV);
@@ -133,33 +130,23 @@ void FFNN::fit(const std::vector<std::vector<double>> X, const std::vector<std::
         }
 
         // Calculate average loss and accuracy
-        std::cout << "Epoch: " << epoch << " Loss: " << loss / N << " Accuracy: " << accuracy / N << std::endl;
+        std::cout << "Epoch: " << epoch + 1 << " Loss: " << loss / N << " Accuracy: " << accuracy / N << std::endl;
     }
 }
 
-void FFNN::predict(const std::vector<double> X, std::vector<double>& Y) {
-    int I_input_size_bias = get_size_include_bias(I_input_size); //consider bias input size of 1
-    int J_hidden_size_bias = get_size_include_bias(J_hidden_size); //consider bias hidden size of 1
-    double bias = 1.0;
-
-    // input layer
-    std::vector<double> x = X;
-    // add bias
-    x.push_back(bias);
+void FFNN::predict(const std::vector<double>& X, std::vector<double>& Y) {
 
     // hidden layer
     for (int j = 0; j < J_hidden_size; ++j) {
         b_hidden[j] = 0.0;
         for (int i = 0; i < I_input_size_bias; ++i) {
-            b_hidden[j] += W[j][i] * x[i];
+            b_hidden[j] += W[j][i] * X[i];
         }
     }
     // activate function
     for (int j = 0; j < J_hidden_size; ++j) {
         z_hidden[j] = sigmoid(b_hidden[j]);
     }
-    // add bias
-    z_hidden.push_back(bias);
 
     // output layer
     std::vector<double> a_output(K_output_size);
@@ -177,17 +164,26 @@ void FFNN::predict(const std::vector<double> X, std::vector<double>& Y) {
     Y = y_output;
 }
 
-void FFNN::predict(const std::vector<std::vector<double>> X, const std::vector<std::vector<double>>& T, std::vector<std::vector<double>>& Y) {
+void FFNN::predict(std::vector<std::vector<double>>& X, const std::vector<std::vector<double>>& T, std::vector<std::vector<double>>& Y) {
     const int N = X.size();
     Y.resize(N, std::vector<double>(K_output_size, 0.0));
     double accuracy = 0.0;
     double loss = 0.0;
+
+    // add bias to test input data
+    const double bias = 1.0;
+    for (int n = 0; n < N; ++n) {
+        X[n].push_back(bias);
+    }
+
     for (int n = 0; n < N; ++n) {
         predict(X[n], Y[n]);
         std::vector<double> y = Y[n];
         std::vector<double> t = T[n];
         loss += cross_entropy(y, t);
-        accuracy += (y == t) ? 1.0 : 0.0;
+        int y_pred = std::max_element(y.begin(), y.end()) - y.begin();
+        int t_true = std::max_element(t.begin(), t.end()) - t.begin();
+        accuracy += (y_pred == t_true) ? 1.0 : 0.0;
     }
     // Calculate average loss and accuracy
     std::cout << "Loss: " << loss / N << " Accuracy: " << accuracy / N << std::endl;

@@ -17,9 +17,9 @@ int main() {
     std::vector<std::vector<double>> T;
     int input_size;
     int output_size = 6;
-    const int n_hidden = 6;
+    const int n_hidden = 12;
     double learning_rate = 0.1;
-    int n_epoch = 200;
+    int epochs = 1000;
 
     if (!load_data("../Dataset/Stars_train.csv", X, T, input_size)) {
         std::cerr << "Error loading data" << std::endl;
@@ -28,7 +28,7 @@ int main() {
     std::cout << "File Loaded" << std::endl;
 
     FFNN ffnn(input_size, n_hidden, output_size);
-    ffnn.fit(X, T, n_epoch, learning_rate);
+    ffnn.fit(X, T, epochs, learning_rate);
 
     std::vector<std::vector<double>> X_test;
     std::vector<std::vector<double>> T_test;
@@ -58,16 +58,17 @@ bool load_data(const std::string& filename, std::vector<std::vector<double>>& X,
             continue;
         }
         std::vector<double> row;
-        std::vector<double> row_t;
+        std::vector<double> row_t(6, 0.0);
         std::string value;
         std::stringstream ss(line);
         int idx = 0;
         while (std::getline(ss, value, ',')) {
-            if (idx == 5) { //target value
-                row_t.push_back(std::stod(value));
+            if (idx == 5) { // target value
+
+                row_t[std::stoi(value)] = 1.0; // one-hot encoding
                 break;
             }
-            else if (idx != 0) { //index number
+            else if (idx != 0) { // index number
                 row.push_back(std::stod(value));
             }
             ++idx;
@@ -86,9 +87,10 @@ bool save_predictions(const std::string& filename, const std::vector<std::vector
     if (!file.is_open()) {
         return false;
     }
+    file << "X_1,X_2,X_3,X_4,T_1,T_2,T_3,T_4,T_5,T_6,Y_1,Y_2,Y_3,Y_4,Y_5,Y_6,Predicted_Class,True_Class" << std::endl;
 
     for (int i = 0; i < X_test.size(); i++) {
-        for (int j = 0; j < X_test[i].size(); j++) {
+        for (int j = 0; j < X_test[i].size() - 1; j++) {
             file << X_test[i][j] << ",";
         }
         for (int j = 0; j < T_test[i].size(); j++) {
@@ -97,7 +99,8 @@ bool save_predictions(const std::string& filename, const std::vector<std::vector
         for (int j = 0; j < Y_pred[i].size(); j++) {
             file << Y_pred[i][j] << ",";
         }
-        file << std::max_element(Y_pred[i].begin(), Y_pred[i].end()) - Y_pred[i].begin();
+        file << std::max_element(Y_pred[i].begin(), Y_pred[i].end()) - Y_pred[i].begin() << ",";
+        file << std::max_element(T_test[i].begin(), T_test[i].end()) - T_test[i].begin();
         file << std::endl;
     }
 
